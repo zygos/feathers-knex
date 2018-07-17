@@ -1,3 +1,5 @@
+.DS_Store
+
 # Logs
 logs
 *.log
@@ -27,5 +29,10 @@ node_modules
 # Users Environment Variables
 .lock-wscript
 
+<<<<<<< HEAD
 db.sqlite
 data.db
+=======
+dist/
+*.sqlite
+>>>>>>> upstream/master
