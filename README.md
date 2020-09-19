@@ -56,6 +56,8 @@ __Options:__
 - `id` (*optional*, default: `'id'`) - The name of the id field property.
 - `events` (*optional*) - A list of [custom service events](https://docs.feathersjs.com/api/events.html#custom-events) sent by this service
 - `paginate` (*optional*) - A [pagination object](https://docs.feathersjs.com/api/databases/common.html#pagination) containing a `default` and `max` page size
+- `multi` (*optional*) - Allow `create` with arrays and `update` and `remove` with `id` `null` to change multiple items. Can be `true` for all methods or an array of allowed methods (e.g. `[ 'remove', 'create' ]`)
+- `whitelist` (*optional*) - A list of additional query parameters to allow (e..g `[ '$regex', '$geoNear' ]`). Default is the supported `operators`
 
 ### `adapter.createQuery(query)`
 
@@ -186,6 +188,26 @@ Through the REST API:
 /messages?text[$like]=Hello%
 ```
 
+### $notlike
+
+The opposite of `$like`; resulting in an SQL condition similar to this: `WHERE some_field NOT LIKE 'X'`
+
+```js
+app.service('messages').find({
+  query: {
+    text: {
+      $notlike: '%bar'
+    }
+  }
+});
+```
+
+Through the REST API:
+
+```
+/messages?text[$notlike]=%bar
+```
+
 ### $ilike
 
 For PostgreSQL only, the keywork $ilike can be used instead of $like to make the match case insensitive. The following query retrieves all messages that start with `hello` (case insensitive):
@@ -204,6 +226,66 @@ Through the REST API:
 
 ```
 /messages?text[$ilike]=hello%
+```
+
+### $contains
+
+For PostgreSQL only, for array-type fields, finds records that contain _all_ of the given values. The following query retrieves all messages whose labels contain all of the values `important`, `work`, or `urgent` :
+
+```js
+app.service('messages').find({
+  query: {
+    labels: {
+      $contains: ['important', 'work', 'urgent']
+    }
+  }
+});
+```
+
+Through the REST API:
+
+```
+/messages?label[$contains][0]=important&label[$contains][1]=work&label[$contains][2]=urgent
+```
+
+### $contained_by
+
+For PostgreSQL only, for array-type fields, finds records that are contained by the given list of values, i.e do not contain values other than those given. The following query retrieves all messages whose labels contain any of the values `important`, `work`, or `urgent`, but no values outside that list :
+
+```js
+app.service('messages').find({
+  query: {
+    labels: {
+      $contained_by: ['important', 'work', 'urgent']
+    }
+  }
+});
+```
+
+Through the REST API:
+
+```
+/messages?label[$contained_by][0]=important&label[$contained_by][1]=work&label[$contained_by][2]=urgent
+```
+
+### $overlap
+
+For PostgreSQL only, for array-type fields, finds records that overlap (have points in common) with the given values. The following query retrieves all messages whose labels contain one or more of the values `important`, `work`, or `urgent` :
+
+```js
+app.service('messages').find({
+  query: {
+    labels: {
+      $overlap: ['important', 'work', 'urgent']
+    }
+  }
+});
+```
+
+Through the REST API:
+
+```
+/messages?label[$overlap][0]=important&label[$overlap][1]=work&label[$overlap][2]=urgent
 ```
 
 
@@ -250,7 +332,7 @@ module.exports = {
 };
 ```
 
-To use the transactions feature, you must ensure that the three hooks (start, commit and rollback) are being used.
+To use the transactions feature, you must ensure that the three hooks (start, end and rollback) are being used.
 
 At the start of any request, a new transaction will be started. All the changes made during the request to the services that are using the `feathers-knex` will use the transaction. At the end of the request, if sucessful, the changes will be commited. If an error occurs, the changes will be forfeit, all the `creates`, `patches`, `updates` and `deletes` are not going to be commited.
 
@@ -266,10 +348,10 @@ In a `find` call, `params.knex` can be passed a KnexJS query (without pagination
 Combined with `.createQuery({ query: {...} })`, which returns a new KnexJS query with the [common filter criteria](https://docs.feathersjs.com/api/databases/querying.html) applied, this can be used to create more complex queries. The best way to customize the query is in a [before hook](https://docs.feathersjs.com/api/hooks.html) for `find`.
 
 ```js
-app.service('mesages').hooks({
+app.service('messages').hooks({
   before: {
     find(context) {
-      const query = this.createQuery(context.params);
+      const query = context.service.createQuery(context.params);
 
       // do something with query here
       query.orderBy('name', 'desc');
@@ -281,8 +363,60 @@ app.service('mesages').hooks({
 });
 ```
 
+## Configuring migrations
+
+For using knex's migration CLI, we need to make the configuration available by the CLI. We can do that by providing a `knexfile.js` (OR `knexfile.ts` when using TypeScript) in the root folder with the following contents:
+
+knexfile.js
+```js
+const app = require('./src/app')
+module.exports = app.get('postgres')
+```
+OR
+
+knexfile.ts
+```ts
+import app from './src/app';
+module.exports = app.get('postgres');
+```
+
+You will need to replace the `postgres` part with the adapter you are using. You will also need to add a `migrations` key to your feathersjs config under your database adapter. Optionally, add a `seeds` key if you will be using [seeds](http://knexjs.org/#Seeds-CLI).
+
+```js
+// src/config/default.json
+...
+  "postgres": {
+    "client": "pg",
+    "connection": "postgres://user:password@localhost:5432/database",
+    "migrations": {
+      "tableName": "knex_migrations"
+    },
+    "seeds": {
+      "directory": "../src/seeds"
+    }
+  }
+```
+
+Then, by running: `knex migrate:make create-users`, a `migrations` directory will be created, with the new migration.
+
+### Error handling
+
+As of version 4.0.0 `feathers-knex` only throws [Feathers Errors](https://docs.feathersjs.com/api/errors.html) with the message. On the server, the original error can be retrieved through a secure symbol via  `error[require('feathers-knex').ERROR]`
+
+```js
+const { ERROR } = require('feathers-knex');
+
+try {
+  await knexService.doSomething();
+} catch(error) {
+  // error is a FeathersError with just the message
+  // Safely retrieve the Knex error
+  const knexError = error[ERROR];
+}
+```
+
 ## License
 
-Copyright (c) 2016
+Copyright (c) 2019
 
 Licensed under the [MIT license](LICENSE).

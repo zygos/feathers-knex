@@ -29,10 +29,9 @@ node_modules
 # Users Environment Variables
 .lock-wscript
 
-<<<<<<< HEAD
-db.sqlite
+# file history
+.history
+
 data.db
-=======
 dist/
-*.sqlite
->>>>>>> upstream/master
+*.sqlite*

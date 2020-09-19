@@ -1,7 +1,7 @@
 {
   "name": "feathers-knex",
   "description": "A service plugin for KnexJS a query builder for PostgreSQL, MySQL and SQLite3",
-  "version": "3.3.0",
+  "version": "7.1.1",
   "homepage": "https://github.com/feathersjs-ecosystem/feathers-knex",
   "keywords": [
     "feathers",
@@ -30,6 +30,7 @@
     "node": ">= 6"
   },
   "main": "lib/",
+  "types": "types",
   "scripts": {
     "publish": "git push origin --tags && npm run changelog && git push origin",
     "changelog": "github_changelog_generator && git add CHANGELOG.md && git commit -am \"Updating changelog\"",
@@ -37,10 +38,11 @@
     "release:minor": "npm version minor && npm publish",
     "release:major": "npm version major && npm publish",
     "lint": "semistandard --fix",
-    "mocha": "mocha --opts mocha.opts",
-    "test": "npm run lint && npm run coverage",
+    "dtslint": "dtslint types",
+    "mocha": "mocha test/",
+    "test": "npm run lint && npm run dtslint && npm run coverage",
     "example": "babel-node example/app",
-    "coverage": "istanbul cover node_modules/mocha/bin/_mocha -- --opts mocha.opts"
+    "coverage": "shx rm -rf *.sqlite && istanbul cover node_modules/mocha/bin/_mocha -- test/"
   },
   "semistandard": {
     "env": [
@@ -51,25 +53,27 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@feathersjs/commons": "^1.4.1",
-    "@feathersjs/errors": "^3.3.0",
-    "debug": "^3.1.0",
-    "is-plain-object": "^2.0.4",
-    "uberproto": "^2.0.3"
-  },
-  "peerDependencies": {
-    "knex": "^0.14.6"
+    "@feathersjs/adapter-commons": "^4.5.2",
+    "@feathersjs/commons": "^4.5.3",
+    "@feathersjs/errors": "^4.5.3",
+    "debug": "^4.1.1",
+    "is-plain-object": "^3.0.1"
   },
   "devDependencies": {
-    "@feathersjs/express": "^1.2.3",
-    "@feathersjs/feathers": "^3.1.7",
-    "body-parser": "^1.18.3",
-    "chai": "^4.1.2",
-    "feathers-service-tests": "^0.10.2",
+    "@feathersjs/adapter-tests": "^4.5.2",
+    "@feathersjs/express": "^4.5.4",
+    "@feathersjs/feathers": "^4.5.3",
+    "body-parser": "^1.19.0",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "dtslint": "^3.6.12",
     "istanbul": "^1.1.0-alpha.1",
-    "knex": "^0.14.6",
-    "mocha": "^5.2.0",
-    "semistandard": "^12.0.1",
-    "sqlite3": "^4.0.1"
+    "knex": "^0.21.1",
+    "loud-rejection": "^2.2.0",
+    "mocha": "^8.0.1",
+    "semistandard": "^14.2.2",
+    "shx": "^0.3.2",
+    "sqlite3": "^5.0.0",
+    "typescript": "^3.9.6"
   }
 }
